@@ -16,9 +16,34 @@ from support import (MODEL, SYSTEM_PROMPT, call_local, execute_tool, mcp_client,
 
 MAX_TOOL_CALLS = 8  # Larkspur's own build capped the loop here; then a human takes over.
 
-TONE_ADDENDUM = ""                       # ✏️ Build 4, step 4.1, intelligence lane
-EXTRA_TOOLS: List[Dict[str, Any]] = []   # ✏️ Build 2, step 2.1: schemas for the tools you add
-LOCAL_TOOLS: Dict[str, Any] = {}         # ✏️ Build 2, step 2.1: the functions behind them
+TONE_ADDENDUM = "Be concise and direct. No filler phrases. Get to the point immediately. Use short sentences."                       # ✏️ Build 4, step 4.1, intelligence lane
+EXTRA_TOOLS: List[Dict[str, Any]] = [   # ✏️ Build 2, step 2.1: schemas for the tools you add
+    {
+        "name": "next_available_day",
+        "description": (
+            "Answer the customer's question 'when is the next day I can fly?': returns the "
+            "earliest date with an open seat on a route, searching forward from a given date. "
+            "Use it when the customer asks when they can next travel, or before offering "
+            "alternatives, to know which day to look at. It returns one date, not bookable "
+            "flight options; use search_alternatives for those. Call lookup_booking first: "
+            "origin, dest, date and cabin come from the disrupted segment, never guessed. "
+            "Answers for one passenger."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "origin": {"type": "string", "description": "Three-letter airport code, e.g. DEN"},
+                "dest": {"type": "string", "description": "Three-letter airport code, e.g. AUS"},
+                "date": {"type": "string", "description": "Search forward from this date, YYYY-MM-DD"},
+                "cabin": {"type": "string", "enum": ["Y", "J"], "description": "Y = main, J = first. Defaults to Y."},
+            },
+            "required": ["origin", "dest", "date"],
+        },
+    },
+]
+LOCAL_TOOLS: Dict[str, Any] = {          # ✏️ Build 2, step 2.1: the functions behind them
+    "next_available_day": next_available_day,
+}
 
 
 def text_of(response) -> str:
@@ -126,7 +151,7 @@ def build_tools() -> List[Dict[str, Any]]:                 # ✏️ Build 1, ste
         },
         {
             "name": "search_alternatives",
-            "description": "search",
+            "description": "Search for alternative Larkspur flights available for rebooking after a disruption. Returns a list of options with option_id, flight details, and availability.",
             "input_schema": {
                 "type": "object",
                 "properties": {"pnr": {"type": "string"}},
