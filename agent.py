@@ -83,16 +83,26 @@ def tool_results(response) -> List[Dict[str, Any]]:
     return results
 
 
+def system_blocks() -> List[Dict[str, Any]]:
+    """The cached prefix: tools render before system, so this one breakpoint covers
+    both. Built per call, not at import, so bench.py --cold's nonce on TONE_ADDENDUM
+    lands. Nothing volatile goes in here; the timestamp lives in the first user turn."""
+    return [{"type": "text", "text": SYSTEM_PROMPT + TONE_ADDENDUM,
+             "cache_control": {"type": "ephemeral"}}]
+
+
 def run_agent(pnr: str, last_name: str, message: str) -> str:            # ✏️ Build 1, step 1.2
     """Run the tool loop until Claude stops asking for tools. Return its final text."""
     client, tracer = new_session()
     tools = tool_list()
+    system = system_blocks()
     messages = [
-        {"role": "user", "content": f"PNR {pnr}, last name {last_name}. {message}"},
+        {"role": "user",
+         "content": f"{runtime_preamble()}PNR {pnr}, last name {last_name}. {message}"},
     ]
 
     response = client.messages.create(
-        model=MODEL, max_tokens=4096, system=runtime_preamble() + SYSTEM_PROMPT + TONE_ADDENDUM,
+        model=MODEL, max_tokens=4096, system=system, cache_control={"type": "ephemeral"},
         thinking={"type": "adaptive"}, tools=tools, messages=messages,
     )
 
@@ -103,7 +113,7 @@ def run_agent(pnr: str, last_name: str, message: str) -> str:            # ✏�
         messages.append({"role": "user", "content": tool_results(response)})
         answer = text_of(response)
         response = client.messages.create(
-            model=MODEL, max_tokens=4096, system=runtime_preamble() + SYSTEM_PROMPT + TONE_ADDENDUM,
+            model=MODEL, max_tokens=4096, system=system, cache_control={"type": "ephemeral"},
             thinking={"type": "adaptive"}, tools=tools, messages=messages,
         )
         turns += 1
