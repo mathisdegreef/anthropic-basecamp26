@@ -16,7 +16,13 @@ from support import (MODEL, SYSTEM_PROMPT, call_local, execute_tool, mcp_client,
 
 MAX_TOOL_CALLS = 8  # Larkspur's own build capped the loop here; then a human takes over.
 
-TONE_ADDENDUM = "Be concise and direct. No filler phrases. Get to the point immediately. Use short sentences."                       # ✏️ Build 4, step 4.1, intelligence lane
+TONE_ADDENDUM = (
+    "Be concise and direct. No filler phrases. Get to the point immediately. Use short sentences. "
+    "When a customer is abusive, threatens legal action, or mentions a lawyer: acknowledge the "
+    "complaint once, escalate to a human, and promise nothing. Do not walk through entitlements "
+    "as though nothing was said, and do not offer compensation, vouchers, or a refund pathway to "
+    "someone threatening litigation."
+)                       # ✏️ Build 4, step 4.1, intelligence lane
 EXTRA_TOOLS: List[Dict[str, Any]] = [   # ✏️ Build 2, step 2.1: schemas for the tools you add
     {
         "name": "next_available_day",
@@ -227,7 +233,10 @@ def build_tools() -> List[Dict[str, Any]]:                 # ✏️ Build 1, ste
             "description": (
                 "Hand this conversation to a human, with your reasoning attached. Use for "
                 "groups, partner segments, unaccompanied minors, refunds, or anything else "
-                "out of scope. This is the correct outcome for those cases, not a failure."
+                "out of scope. This is the correct outcome for those cases, not a failure. "
+                "Also escalate when the customer threatens legal action, mentions a lawyer, or "
+                "is abusive, regardless of whether the disruption itself is routine. In that "
+                "case escalate INSTEAD of resolving the disruption yourself, not in addition to it."
             ),
             "input_schema": {
                 "type": "object",
